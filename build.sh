@@ -1,14 +1,24 @@
 #!/bin/bash
 
-echo "Building frontend..."
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Navigate to frontend directory
 cd frontend
+
+# Install Node.js dependencies
 npm install
+
+# Build frontend
 npm run build
+
+# Move frontend build to backend/static
 cd ..
+mkdir -p backend/static
+cp -r frontend/dist/* backend/static/
 
 echo "Setting up backend..."
 cd backend
-pip install -r requirements.txt
 
 echo "Starting server..."
 uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} 

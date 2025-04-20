@@ -13,7 +13,9 @@ echo "Starting servers..."
 # Start backend
 echo "Starting backend server..."
 cd "$BASE_DIR/backend"
+python -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
 uvicorn main:app --reload &
 BACKEND_PID=$!
 
@@ -24,5 +26,6 @@ echo "Backend server running at http://localhost:8000"
 # Start frontend
 echo "Starting frontend server..."
 cd "$BASE_DIR/frontend"
+npm install
 export PORT=5175  # Set specific port for frontend
 npm run dev 

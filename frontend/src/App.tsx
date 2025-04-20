@@ -10,7 +10,13 @@ function App() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
+      const selectedFile = e.target.files[0]
+      if (!selectedFile.name.endsWith('.pptx')) {
+        setError('Please select a .pptx file')
+        setFile(null)
+        return
+      }
+      setFile(selectedFile)
       setError('')
     }
   }
@@ -35,9 +41,10 @@ function App() {
         },
       })
       setTitles(response.data.titles)
-    } catch (err) {
-      setError('Error processing file. Please try again.')
-      console.error(err)
+    } catch (err: any) {
+      console.error('Error details:', err)
+      const errorMessage = err.response?.data?.detail || err.message || 'Error processing file. Please try again.'
+      setError(`Error: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -66,7 +73,7 @@ function App() {
       <form onSubmit={handleSubmit}>
         <div className="upload-section">
           <label htmlFor="file-input" style={{ display: 'block', marginBottom: '5px' }}>
-            Select your PowerPoint file:
+            Select your PowerPoint file (.pptx):
           </label>
           <input
             id="file-input"
