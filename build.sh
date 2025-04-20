@@ -17,8 +17,4 @@ cd ..
 mkdir -p backend/static
 cp -r frontend/dist/* backend/static/
 
-echo "Setting up backend..."
-cd backend
-
-echo "Starting server..."
-uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} 
+echo "Build completed successfully!" 
