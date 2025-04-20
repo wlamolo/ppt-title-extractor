@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import axios from 'axios'
 import './App.css'
+import Terms from './Terms'
 
-function App() {
+function MainApp() {
   const [file, setFile] = useState<File | null>(null)
   const [titles, setTitles] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -101,9 +103,20 @@ function App() {
       )}
 
       <div style={{ marginTop: '20px', borderTop: '1px solid #ccc', paddingTop: '10px', fontSize: '12px', color: '#666' }}>
-        © 2024 - PPT Title Extractor - <a href="#">terms of use</a> - <a href="#">privacy</a>
+        © 2025 - PPT Title Extractor - <Link to="/terms">terms of use</Link>
       </div>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/terms" element={<Terms />} />
+      </Routes>
+    </Router>
   )
 }
 
