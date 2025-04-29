@@ -73,7 +73,8 @@ Content to analyze:
 Please provide feedback on the following:
 1. Check if the introduction effectively frames the problem and if the conclusion clearly delivers a strong call to action or takeaway.
 2. Identify any points where the transition between slides feels abrupt, confusing, or could be improved.
-3. Suggest how to reorganize the slides to make the argument more persuasive."""
+3. 	Does the sequence of slide headlines form a logical, easy-to-follow story?
+4. Suggest how to reorganize the slides to make the argument more persuasive."""
 
         try:
             logger.info("Sending request to OpenAI API...")
@@ -183,17 +184,22 @@ async def extract_titles(file: UploadFile = File(...)):
         current_section = None
         
         for i, title in enumerate(titles):
+            # Skip any error messages or problematic slides
+            if "[Error processing slide" in title or "[No Title]" in title:
+                continue
+                
             if title.startswith("[SECTION]"):
                 # Handle section markers
                 current_section = title.replace("[SECTION]", "").strip()
                 formatted_titles.append(f"\n{current_section}\n{'='*len(current_section)}")
             else:
-                # Format regular slides
+                # Only add valid titles
                 prefix = f"p.{i+1}"
-                if current_section:
-                    formatted_titles.append(f"{prefix}: {title}")
-                else:
-                    formatted_titles.append(f"{prefix}: {title}")
+                if title.strip():  # Only add non-empty titles
+                    if current_section:
+                        formatted_titles.append(f"{prefix}: {title}")
+                    else:
+                        formatted_titles.append(f"{prefix}: {title}")
         
         titles_text = "\n".join(formatted_titles)
         
