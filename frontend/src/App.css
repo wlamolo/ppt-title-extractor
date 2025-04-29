@@ -104,4 +104,113 @@ a:hover {
   padding: 10px;
   background-color: #ffffcc;
   border: 1px solid #e6e6b3;
+}
+
+.audience-input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.audience-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,.25);
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+.primary-button,
+.feedback-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.primary-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+}
+
+.primary-button:hover {
+  background-color: #0056b3;
+}
+
+.feedback-button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feedback-button:hover {
+  background-color: #218838;
+}
+
+.feedback-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.feedback-section {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.feedback-section h2 {
+  margin-top: 0;
+  color: #333;
+  font-size: 1.2em;
+  margin-bottom: 15px;
+}
+
+.feedback-content {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: #444;
+}
+
+.feedback-content p {
+  margin-bottom: 12px;
+}
+
+.feedback-content p:last-child {
+  margin-bottom: 0;
+}
+
+.error-message.feedback-error {
+  margin-top: 15px;
+  background-color: #fff3f3;
+  border-color: #dc3545;
 } 

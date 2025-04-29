@@ -9,6 +9,10 @@ function MainApp() {
   const [titles, setTitles] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>('')
+  const [targetAudience, setTargetAudience] = useState<string>('')
+  const [feedback, setFeedback] = useState<string>('')
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string>('')
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -20,6 +24,8 @@ function MainApp() {
       }
       setFile(selectedFile)
       setError('')
+      setFeedback('')
+      setFeedbackError('')
     }
   }
 
@@ -64,6 +70,31 @@ function MainApp() {
     document.body.removeChild(a)
   }
 
+  const handleGetFeedback = async () => {
+    if (!titles) {
+      setFeedbackError('Please extract titles first before requesting feedback')
+      return
+    }
+
+    setIsLoadingFeedback(true)
+    setFeedbackError('')
+    setError('')
+
+    try {
+      const response = await axios.post('/api/get-feedback', {
+        titles,
+        targetAudience: targetAudience.trim() || 'general audience'
+      })
+      setFeedback(response.data.feedback)
+    } catch (err: any) {
+      console.error('Error getting feedback:', err)
+      const errorMessage = err.response?.data?.detail || err.message || 'Error getting feedback. Please try again.'
+      setFeedbackError(`Error: ${errorMessage}`)
+    } finally {
+      setIsLoadingFeedback(false)
+    }
+  }
+
   return (
     <div className="container">
       <h1>PPT slide title extractor</h1>
@@ -84,6 +115,19 @@ function MainApp() {
             onChange={handleFileChange}
             className="file-input"
           />
+          <div className="audience-input-section" style={{ marginTop: '10px' }}>
+            <label htmlFor="audience-input" style={{ display: 'block', marginBottom: '5px' }}>
+              Target Audience (optional):
+            </label>
+            <input
+              id="audience-input"
+              type="text"
+              value={targetAudience}
+              onChange={(e) => setTargetAudience(e.target.value)}
+              placeholder="e.g., executives, students, technical team"
+              className="audience-input"
+            />
+          </div>
           <button type="submit" disabled={!file || loading}>
             {loading ? 'processing...' : 'extract titles'}
           </button>
@@ -96,9 +140,43 @@ function MainApp() {
         <div className="results">
           <h2>extracted titles:</h2>
           <pre>{titles}</pre>
-          <button onClick={handleDownload} style={{ marginTop: '10px' }}>
-            save as text file
-          </button>
+          <div className="button-group">
+            <button 
+              onClick={handleDownload}
+              className="primary-button"
+            >
+              save as text file
+            </button>
+            <button 
+              onClick={handleGetFeedback} 
+              disabled={isLoadingFeedback}
+              className={`feedback-button ${isLoadingFeedback ? 'loading' : ''}`}
+            >
+              {isLoadingFeedback ? (
+                <>
+                  <span className="loading-spinner"></span>
+                  Getting Feedback...
+                </>
+              ) : 'Get Narrative Feedback'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {feedbackError && (
+        <div className="error-message feedback-error">
+          {feedbackError}
+        </div>
+      )}
+
+      {feedback && (
+        <div className="feedback-section">
+          <h2>Narrative Feedback</h2>
+          <div className="feedback-content">
+            {feedback.split('\n').map((paragraph, index) => (
+              <p key={index}>{paragraph}</p>
+            ))}
+          </div>
         </div>
       )}
 

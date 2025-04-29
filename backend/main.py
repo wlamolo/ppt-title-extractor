@@ -3,13 +3,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pptx import Presentation
+from pydantic import BaseModel
+import openai
+from dotenv import load_dotenv
 import io
 import os
 import logging
 
+# Load environment variables
+load_dotenv()
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Configure OpenAI
+openai.api_key = os.getenv("OPENAI_API_KEY")
+if not openai.api_key:
+    logger.warning("OPENAI_API_KEY not found in environment variables")
 
 app = FastAPI()
 
@@ -31,6 +42,46 @@ async def serve_spa(full_path: str):
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Not found")
     return FileResponse("../frontend/dist/index.html")
+
+class FeedbackRequest(BaseModel):
+    titles: str
+    targetAudience: str
+
+@app.post("/api/get-feedback")
+async def get_feedback(request: FeedbackRequest):
+    try:
+        if not openai.api_key:
+            raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+        prompt = f"""This narrative is intended for {request.targetAudience}.
+
+Content to analyze:
+{request.titles}
+
+Please provide feedback on the following:
+1. Check if the introduction effectively frames the problem and if the conclusion clearly delivers a strong call to action or takeaway.
+2. Identify any points where the transition between slides feels abrupt, confusing, or could be improved.
+3. Suggest how to reorganize the slides to make the argument more persuasive."""
+
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a presentation structure expert. Analyze the slide titles and provide constructive feedback on the narrative flow."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1000
+            )
+            feedback = response.choices[0].message.content
+            return {"feedback": feedback}
+        except Exception as e:
+            logger.error(f"OpenAI API error: {str(e)}")
+            raise HTTPException(status_code=500, detail="Error getting feedback from AI service")
+
+    except Exception as e:
+        logger.error(f"Unexpected error in get_feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # API endpoints under /api prefix
 @app.post("/api/extract-titles")
