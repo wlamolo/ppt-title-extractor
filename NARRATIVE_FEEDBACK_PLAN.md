@@ -8,6 +8,19 @@ Add functionality to collect target audience information and provide AI-powered 
 2. AI Feedback Generation
 3. Feedback Display
 
+## New Display Improvements
+
+### Text Display Enhancement
+- [ ] Replace "Page" with "p." in slide numbering
+- [ ] Remove markdown-style bolding ("**")
+- [ ] Improve overall text formatting for better readability
+
+### Section Title Handling
+- [ ] Identify section title slides (slides without headlines)
+- [ ] Extract section titles from these slides if available
+- [ ] Update the display logic to show section information appropriately
+- [ ] Handle empty slides gracefully
+
 ## Technical Requirements
 
 ### Frontend Changes
@@ -22,6 +35,12 @@ Add functionality to collect target audience information and provide AI-powered 
 - [ ] Create new endpoint for feedback generation
 - [ ] Update text file processing to include audience information
 - [ ] Implement error handling for API calls
+- [ ] Modify `extract_titles` endpoint to:
+  - Extract section titles from slides
+  - Identify section introduction slides
+  - Include section information in the response structure
+- [ ] Update PowerPoint processing logic to handle different slide types
+- [ ] Create a more structured response format that includes both titles and section information
 
 ### API Integration
 - [ ] Add OpenAI API key configuration
@@ -91,3 +110,28 @@ Response:
 3. Integration implementation
 4. UI polish and error handling
 5. Testing and documentation 
+
+## Implementation Steps
+
+1. Backend Updates
+   - [ ] Analyze PowerPoint slide layouts to identify section slides
+   - [ ] Extract section information from slides
+   - [ ] Modify the response structure to include section data
+   - [ ] Update text formatting for slide numbers
+
+2. Frontend Updates
+   - [ ] Update the title display component
+   - [ ] Add styling for section titles
+   - [ ] Implement new formatting for slide numbers
+   - [ ] Add visual hierarchy between sections and slides
+
+3. Testing
+   - [ ] Test with various PowerPoint layouts
+   - [ ] Verify section title extraction
+   - [ ] Check formatting consistency
+   - [ ] Test with empty slides and edge cases
+
+## Original Features (Completed)
+1. Target Audience Input Field
+2. AI Feedback Generation
+3. Feedback Display 

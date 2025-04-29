@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pptx import Presentation
 from pydantic import BaseModel
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 import io
 import os
@@ -17,24 +17,23 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configure OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
-if not openai.api_key:
-    logger.warning("OPENAI_API_KEY not found in environment variables")
-
 app = FastAPI()
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5175"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve static files from the frontend build
-app.mount("/assets", StaticFiles(directory="../frontend/dist/assets"), name="assets")
+# Only mount static files if the directory exists (production mode)
+frontend_dist = "../frontend/dist"
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
+    if os.path.exists(os.path.join(frontend_dist, "assets")):
+        app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
 
 # Serve the React app at the root
 @app.get("/{full_path:path}")
@@ -47,11 +46,24 @@ class FeedbackRequest(BaseModel):
     titles: str
     targetAudience: str
 
+def get_openai_client():
+    """Initialize OpenAI client only when needed"""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OpenAI API key not configured")
+    return OpenAI()  # It will automatically use OPENAI_API_KEY from environment
+
 @app.post("/api/get-feedback")
 async def get_feedback(request: FeedbackRequest):
     try:
-        if not openai.api_key:
-            raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+        try:
+            client = get_openai_client()
+        except ValueError as e:
+            logger.error("OpenAI API key is not configured")
+            raise HTTPException(status_code=500, detail="OpenAI API key not configured. Please check server configuration.")
+
+        logger.info(f"Generating feedback for audience: {request.targetAudience}")
+        logger.info(f"Content length: {len(request.titles)} characters")
 
         prompt = f"""This narrative is intended for {request.targetAudience}.
 
@@ -64,7 +76,8 @@ Please provide feedback on the following:
 3. Suggest how to reorganize the slides to make the argument more persuasive."""
 
         try:
-            response = openai.ChatCompletion.create(
+            logger.info("Sending request to OpenAI API...")
+            completion = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are a presentation structure expert. Analyze the slide titles and provide constructive feedback on the narrative flow."},
@@ -73,15 +86,24 @@ Please provide feedback on the following:
                 temperature=0.7,
                 max_tokens=1000
             )
-            feedback = response.choices[0].message.content
+            logger.info("Successfully received response from OpenAI")
+            feedback = completion.choices[0].message.content
             return {"feedback": feedback}
         except Exception as e:
-            logger.error(f"OpenAI API error: {str(e)}")
-            raise HTTPException(status_code=500, detail="Error getting feedback from AI service")
+            logger.error(f"OpenAI API error details: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error getting feedback from AI service: {str(e)}"
+            )
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.error(f"Unexpected error in get_feedback: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Server error while processing feedback request: {str(e)}"
+        )
 
 # API endpoints under /api prefix
 @app.post("/api/extract-titles")
@@ -112,16 +134,42 @@ async def extract_titles(file: UploadFile = File(...)):
             logger.error(f"Error creating Presentation object: {str(e)}")
             raise HTTPException(status_code=400, detail="Invalid PowerPoint file format")
         
-        # Extract titles from slides
+        # Extract titles and identify sections
         titles = []
+        current_section = None
+        
         for i, slide in enumerate(pptx.slides):
             try:
-                if slide.shapes.title and slide.shapes.title.text:
-                    titles.append(slide.shapes.title.text.strip())
-                    logger.info(f"Extracted title from slide {i+1}: {titles[-1]}")
+                # Get all text from the slide
+                slide_text = ""
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        slide_text += shape.text.strip() + "\n"
+                
+                title_text = slide.shapes.title.text.strip() if slide.shapes.title else ""
+                
+                # Check if this might be a section slide
+                is_section_slide = False
+                if not title_text and slide_text.strip():
+                    # If there's no title but there is other text, this might be a section slide
+                    lines = [line.strip() for line in slide_text.split('\n') if line.strip()]
+                    if lines:
+                        current_section = lines[0]  # Use the first non-empty line as section title
+                        is_section_slide = True
+                        logger.info(f"Found section slide {i+1}: {current_section}")
+                
+                if is_section_slide:
+                    # For section slides, use a special format
+                    titles.append(f"[SECTION] {current_section}")
+                elif title_text:
+                    # For regular slides with titles
+                    titles.append(title_text)
+                    logger.info(f"Extracted title from slide {i+1}: {title_text}")
                 else:
+                    # For slides without titles
                     titles.append("[No Title]")
                     logger.info(f"No title found in slide {i+1}")
+                
             except Exception as e:
                 logger.error(f"Error processing slide {i+1}: {str(e)}")
                 titles.append(f"[Error processing slide {i+1}]")
@@ -130,8 +178,24 @@ async def extract_titles(file: UploadFile = File(...)):
             logger.warning("No slides found in presentation")
             return {"titles": "No slides found in the presentation"}
         
-        # Create a text file with the titles
-        titles_text = "\n".join(f"**Page {i+1}**: {title}" for i, title in enumerate(titles))
+        # Create formatted text with titles
+        formatted_titles = []
+        current_section = None
+        
+        for i, title in enumerate(titles):
+            if title.startswith("[SECTION]"):
+                # Handle section markers
+                current_section = title.replace("[SECTION]", "").strip()
+                formatted_titles.append(f"\n{current_section}\n{'='*len(current_section)}")
+            else:
+                # Format regular slides
+                prefix = f"p.{i+1}"
+                if current_section:
+                    formatted_titles.append(f"{prefix}: {title}")
+                else:
+                    formatted_titles.append(f"{prefix}: {title}")
+        
+        titles_text = "\n".join(formatted_titles)
         
         logger.info(f"Successfully processed {len(titles)} slides")
         return {"titles": titles_text}
