@@ -4,6 +4,42 @@ import axios from 'axios'
 import './App.css'
 import Terms from './Terms'
 
+// Configure axios
+const axiosInstance = axios.create({
+  baseURL: 'http://localhost:8005',
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  }
+})
+
+// Add request interceptor for better error handling
+axiosInstance.interceptors.request.use(
+  config => {
+    // For multipart/form-data, let the browser set the Content-Type
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+    return config
+  },
+  error => {
+    console.error('Request error:', error)
+    return Promise.reject(error)
+  }
+)
+
+// Add response interceptor for better error handling
+axiosInstance.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('Response error:', error)
+    if (!error.response) {
+      throw new Error('Network error - Please check if the server is running and try again')
+    }
+    throw error
+  }
+)
+
 function MainApp() {
   const [file, setFile] = useState<File | null>(null)
   const [titles, setTitles] = useState<string>('')
@@ -43,11 +79,7 @@ function MainApp() {
     setError('')
 
     try {
-      const response = await axios.post('/api/extract-titles', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      const response = await axiosInstance.post('/api/extract-titles', formData)
       setTitles(response.data.titles)
     } catch (err: any) {
       console.error('Error details:', err)
@@ -81,7 +113,7 @@ function MainApp() {
     setError('')
 
     try {
-      const response = await axios.post('/api/get-feedback', {
+      const response = await axiosInstance.post('/api/get-feedback', {
         titles,
         targetAudience: targetAudience.trim() || 'general audience'
       })
